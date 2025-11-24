@@ -22,41 +22,65 @@ class DoubleConv3d(nn.Module):
 class UNet3D(nn.Module):
     """
     Input:  (B,1,D,H,W)  CT patch
-    Output: (B,1,D,H,W) logits; folosim doar slice-ul central la loss.
+    Output: (B,1,D,H,W) logits; pentru loss folosim doar slice-ul central pe D.
+
+    IMPORTANT:
+    - Pooling doar pe H,W (kernel=(1,2,2)), NU pe D.
+    - Upsampling la fel, doar pe H,W.
     """
 
     def __init__(self, in_channels=1, base_channels=16):
         super().__init__()
 
+        # Encoder
         self.enc1 = DoubleConv3d(in_channels, base_channels)
-        self.pool1 = nn.MaxPool3d(2)
+        self.pool1 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
         self.enc2 = DoubleConv3d(base_channels, base_channels * 2)
-        self.pool2 = nn.MaxPool3d(2)
+        self.pool2 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
         self.enc3 = DoubleConv3d(base_channels * 2, base_channels * 4)
-        self.pool3 = nn.MaxPool3d(2)
+        self.pool3 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
+        # Bottleneck
         self.bottleneck = DoubleConv3d(base_channels * 4, base_channels * 8)
 
-        self.up3 = nn.ConvTranspose3d(base_channels * 8, base_channels * 4, 2, 2)
+        # Decoder
+        self.up3 = nn.ConvTranspose3d(
+            base_channels * 8,
+            base_channels * 4,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+        )
         self.dec3 = DoubleConv3d(base_channels * 8, base_channels * 4)
 
-        self.up2 = nn.ConvTranspose3d(base_channels * 4, base_channels * 2, 2, 2)
+        self.up2 = nn.ConvTranspose3d(
+            base_channels * 4,
+            base_channels * 2,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+        )
         self.dec2 = DoubleConv3d(base_channels * 4, base_channels * 2)
 
-        self.up1 = nn.ConvTranspose3d(base_channels * 2, base_channels, 2, 2)
+        self.up1 = nn.ConvTranspose3d(
+            base_channels * 2,
+            base_channels,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+        )
         self.dec1 = DoubleConv3d(base_channels * 2, base_channels)
 
         self.out_conv = nn.Conv3d(base_channels, 1, kernel_size=1)
 
     def forward(self, x):
-        x1 = self.enc1(x)
+        # Encoder
+        x1 = self.enc1(x)              # (B, C, D, H, W)
         x2 = self.enc2(self.pool1(x1))
         x3 = self.enc3(self.pool2(x2))
 
         x4 = self.bottleneck(self.pool3(x3))
 
+        # Decoder
         x = self.up3(x4)
         x = torch.cat([x, x3], dim=1)
         x = self.dec3(x)
@@ -69,5 +93,5 @@ class UNet3D(nn.Module):
         x = torch.cat([x, x1], dim=1)
         x = self.dec1(x)
 
-        logits_3d = self.out_conv(x)
+        logits_3d = self.out_conv(x)   # (B,1,D,H,W)
         return logits_3d
