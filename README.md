@@ -1,9 +1,12 @@
 # Ink Detection on Herculaneum Papyri – Fragment 1 (Project Readme)
 
-This repository contains the code for our Medical Data Science project on **ink detection in X‑ray micro‑CT scans of carbonized Herculaneum papyri**.
+This repository contains the code for our Medical Data Science project on
+ink detection in X-ray micro-CT scans of carbonized Herculaneum papyri.
 
-We currently work only with **Fragment 1 (PHercParis2Fr47)** from the Vesuvius / EduceLab dataset.  
-The goal is to detect carbon ink on the exposed papyrus surface using a 3D CT volume as input and a 2D ink mask as target.
+We currently work only with Fragment 1 (PHercParis2Fr47) from the Vesuvius / EduceLab dataset.
+The goal is to detect carbon ink on the exposed papyrus surface using a 3D CT volume as input
+and a 2D ink mask as target.
+
 ---
 
 ## 1. Repository structure
