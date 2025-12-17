@@ -1,8 +1,5 @@
+# 2
 # src/utils/metrics.py
-import torch
-import torch.nn.functional as F
-
-
 def binarize_probs(probs: torch.Tensor, threshold: float = 0.5) -> torch.Tensor:
     """probs in [0,1], shape (B,1,H,W) -> 0/1 tensor"""
     return (probs >= threshold).float()
@@ -69,3 +66,28 @@ def pseudo_f_measure(target: torch.Tensor,
 
     f1 = 2 * precision * recall / (precision + recall + eps)
     return f1.mean().item()
+
+
+class DiceBCELoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(DiceBCELoss, self).__init__()
+        self.bce = nn.BCEWithLogitsLoss()
+
+    def forward(self, inputs, targets, smooth=1):
+        # BCE Loss (Standard)
+        bce = self.bce(inputs, targets)
+        
+        # Dice Loss (The "Overlap" Part)
+        inputs_sigmoid = torch.sigmoid(inputs)       
+        
+        # Flatten label and prediction tensors
+        inputs_flat = inputs_sigmoid.view(-1)
+        targets_flat = targets.view(-1)
+        
+        intersection = (inputs_flat * targets_flat).sum()                            
+        dice = (2.*intersection + smooth)/(inputs_flat.sum() + targets_flat.sum() + smooth)  
+        
+        dice_loss = 1 - dice
+        
+        # Combine: 50% BCE (Stability) + 50% Dice (F-Score Optimization)
+        return 0.5 * bce + 0.5 * dice_loss
